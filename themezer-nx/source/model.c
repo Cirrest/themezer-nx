@@ -1,6 +1,7 @@
 #include "model.h"
 
 const char *targetOptions[] = {
+    "Packs",
     "Home Menu",
     "Lock Screen",
     "All Apps",
@@ -9,14 +10,15 @@ const char *targetOptions[] = {
     "User Page",
     "News",
     "All",
-    "Packs"
+    "Splashes"
 };
 
 const char *sortOptions[] = {
-    "Last Updated",
+    "Trending",
+    "Created",
+    "Updated",
     "Downloads",
-    "Saves",
-    "Creation Date"
+    "Saves"
 };
 
 const char *orderOptions[] = {

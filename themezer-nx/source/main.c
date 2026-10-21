@@ -14,19 +14,6 @@
 
 #include "curl.h"
 
-ShapeLinker_t *errorMenu(char *message, int errLoc){
-    ShapeLinker_t *out = NULL;
-    
-    ShapeLinkAdd(&out, ButtonCreate(POS(0, 50, SCREEN_W, SCREEN_H - 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_MAINBG, 0, ButtonStyleFlat, "Could not connect to the Themezer. Press A to exit", FONT_TEXT[FSize35], exitFunc), ButtonType);
-    if (message)
-        ShapeLinkAdd(&out, TextCenteredCreate(POS(0, SCREEN_H - 50, 1280, 50), message, COLOR_RED, FONT_TEXT[FSize30]), TextCenteredType);
-
-    bool ShowErrMenu = (errLoc == 1 && cURLErrBuff[0] != '\0');
-    ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, 50), COLOR_TOPBAR, COLOR_BTN4, COLOR_WHITE, COLOR_TOPBARCURSOR, (ShowErrMenu) ? 0 : BUTTON_DISABLED, ButtonStyleTopStrip, (ShowErrMenu) ? "Details" : "Details Unavailable", FONT_TEXT[FSize30], ShowCurlError), ButtonType);
-
-    return out;
-}
-
 ShapeLinker_t *WarnMenu(){
     ShapeLinker_t *warnMenu = CreateBaseMessagePopup("Warning!", "The NXThemes Installer could not be found!\nMake sure it is in the following location:\n\nsd:/switch/NXThemesInstaller.nro");
 
@@ -46,21 +33,22 @@ int main(int argc, char* argv[])
     InitTextures();
     socketInitializeDefault();
     curl_global_init(CURL_GLOBAL_ALL);
+    InitCurlSession();
     InitHid();
     //nxlinkStdio();
 
-    RequestInfo_t rI = {0, 0, 0, 0, 0, 0, "", 0, 0, 0, NULL, NULL, {NULL, 0, NULL, true}, NULL};
+    RequestInfo_t rI = {0};
     SetDefaultsRequestInfo(&rI);
-    rI.maxDls = 3;
-    rI.limit = 12;
-    rI.target = 8;
-    ShapeLinker_t *items = NULL;
+    rI.target = 0;
+    rI.contentType = RequestContentPacks;
 
-    AllocateInstalls(7);
-    int res;
+    AllocateInstalls(INSTALL_QUEUE_COUNT);
 
     mkdir("/Themes/", 0777);
     mkdir("/Themes/ThemezerNX", 0777);
+    mkdir("/Themes/ThemezerNX/Splashes", 0777);
+    mkdir("/Themes/ThemezerNX/.tmp", 0777);
+    CleanupTemporaryInstalls();
 
     const char *themeInstallerLocation = GetThemeInstallerPath();
     if (!themeInstallerLocation){
@@ -72,41 +60,32 @@ int main(int argc, char* argv[])
         SetInstallButtonState(1);
     }
 
-    char *errMessage = NULL;
-    int errLoc = 0;
+    while (true){
+        ResetBootMenuAction();
+        ShapeLinker_t *bootMenu = CreateBootMenu();
+        MakeMenu(bootMenu, ButtonHandlerBootMenu, NULL);
+        ShapeLinkDispose(&bootMenu);
 
-    if (!(res = MakeJsonRequest(GenLink(&rI), &rI.response))){
-        if (!(res = GenThemeArray(&rI))){
-            items = GenListItemList(&rI);
-            AddThemeImagesToDownloadQueue(&rI, true);
-        }
-        else {
-            printf(CopyTextArgsUtil("Theme array gen failed, %d", res));
-            errMessage = CopyTextArgsUtil("Parsing Json data failed! Error Code: %d", res);
-        }       
+        if (!ConsumeBootMenuBrowseRequested())
+            break;
+
+        if (!RunMainMenu(&rI))
+            break;
     }
-    else {
-        printf("Request failed");
-        errMessage = CopyTextArgsUtil("Themezer request failed! Error Code: %d", res);
-        errLoc = 1;
-    }
-        
-    ShapeLinker_t *mainMenu = (items != NULL) ? CreateMainMenu(items, &rI) : errorMenu(errMessage, errLoc);
-    MakeMenu(mainMenu, ButtonHandlerMainMenu, (items != NULL) ? HandleDownloadQueue : NULL);
-    ShapeLinkDispose(&mainMenu);
     
-    FreeThemes(&rI);
-
-    NNFREE(errMessage);
+    CleanupMainMenuLoad();
+    FreeRequestContent(&rI);
 
     if (themeInstallerLocation){
         if (CheckIfInstallsQueued()){
-            if (R_SUCCEEDED(envSetNextLoad(themeInstallerLocation, GetInstallArgs(themeInstallerLocation)))){
+            char *installArgs = GetInstallArgs(themeInstallerLocation);
+            if (R_SUCCEEDED(envSetNextLoad(themeInstallerLocation, installArgs))){
                 printf("Env set!\n");
             }
             else {
                 printf("Env ded!\n");
             }
+            free(installArgs);
         }
     }
 
@@ -114,6 +93,7 @@ int main(int argc, char* argv[])
     romfsExit();
     FontExit();
     ExitSDL();
+    CleanupCurlSession();
     curl_global_cleanup();
     socketExit();
     //consoleExit(NULL);

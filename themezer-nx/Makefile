@@ -39,7 +39,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 APP_TITLE   := Themezer-NX
 APP_AUTHOR  := Such Meme, Many Skill
-APP_VERSION := 2.0.3
+APP_VERSION := 3.3.1
 
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
@@ -54,7 +54,7 @@ ROMFS		:=  romfs
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
 CFLAGS	:=	-g -Wall -O3 -ffunction-sections \
-			$(ARCH) $(DEFINES)
+			$(ARCH) $(DEFINES) -DAPP_VERSION=\"$(APP_VERSION)\"
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__ `sdl2-config --cflags`
 

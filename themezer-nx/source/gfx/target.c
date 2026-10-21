@@ -4,7 +4,7 @@ ShapeLinker_t *CreateSideTargetMenu(RequestInfo_t *rI){
     ShapeLinker_t *out = CreateSideBaseMenu("Type");
 
     ShapeLinker_t *list = NULL;
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < TARGET_OPTION_COUNT; i++) {
         if (rI->target == i) {
             SetActiveColorTexture(targetIcons[i]);
         } else {
@@ -24,7 +24,7 @@ ShapeLinker_t *CreateSideTargetMenu(RequestInfo_t *rI){
 int ShowSideTargetMenu(Context_t *ctx){
     RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
     ShapeLinker_t *menu = CreateSideTargetMenu(rI);
-    Context_t menuCtx = MakeMenu(menu, ButtonHandlerBExit, NULL);
+    Context_t menuCtx = MakeMenu(menu, ButtonHandlerBXExit, NULL);
 
     if (menuCtx.selected->type == ListViewType && menuCtx.origin == OriginFunction){
         ListView_t *lv = menuCtx.selected->item;
@@ -32,20 +32,27 @@ int ShowSideTargetMenu(Context_t *ctx){
         if (rI->target != selection){
             int tempTarget = rI->target;
             int tempPage = rI->page;
+            int tempSort = rI->sort;
+            int tempOrder = rI->order;
+            char *tempSearch = CopyTextUtil(rI->search ? rI->search : "");
+            RequestContentType_t tempContentType = rI->contentType;
             SetDefaultsRequestInfo(rI);
             rI->target = selection;
-            if (selection == 8){
-                rI->maxDls = 3;
-                rI->limit = 12;
-            }
+            rI->sort = tempSort;
+            rI->order = tempOrder;
+            NNFREE(rI->search);
+            rI->search = tempSearch;
+            rI->contentType = (selection == 0) ? RequestContentPacks :
+                (selection == SPLASH_TARGET_INDEX) ? RequestContentSplashes : RequestContentThemes;
             printf("Making request...\n");
             if (MakeRequestAsCtx(ctx, rI)){
                 rI->target = tempTarget;
                 rI->page = tempPage;
+                rI->contentType = tempContentType;
             }
         }
     }
 
     ShapeLinkDispose(&menu);
-    return (menuCtx.curOffset == 8 && menuCtx.origin == OriginFunction) ? -1 : 0; 
+    return (menuCtx.curOffset == 8 && menuCtx.origin == OriginFunction) ? -1 : 0;
 }

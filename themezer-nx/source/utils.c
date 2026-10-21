@@ -4,7 +4,11 @@
 #include <JAGL.h>
 #include <unistd.h>
 #include <sys/stat.h> 
+#include <dirent.h>
+#include <errno.h>
 #include "model.h"
+
+#define TEMPORARY_INSTALL_DIR "/Themes/ThemezerNX/.tmp"
 
 typedef struct {
     char **paths;
@@ -27,8 +31,129 @@ const char* GetThemeInstallerPath(){
 	return NULL;
 }
 
-char *GetThemePath(const char *creator, const char *themeName, const char *themeType){
-	return CopyTextArgsUtil("/Themes/ThemezerNX/%s - %s - %s.nxtheme", themeType, creator, themeName);
+int EnsureDirectoryForFile(const char *path){
+	char *dir = CopyTextUtil(path);
+	char *lastSlash = strrchr(dir, '/');
+	int res = 0;
+
+	if (lastSlash != NULL && lastSlash != dir){
+		*lastSlash = '\0';
+		res = mkdir(dir, 0777);
+		if (res && errno == EEXIST)
+			res = 0;
+	}
+
+	free(dir);
+	return res;
+}
+
+char *GetThemePath(const ThemeInfo_t *theme, const char *themeType){
+	char *themeName = SafeFilenameText(theme->name);
+	char *creator = SafeFilenameText(theme->creator);
+	char *themeTypeSafe = SafeFilenameText(themeType);
+	char *themeId = SafeFilenameText(theme->id);
+	char *fileName = CopyTextArgsUtil("%s by %s (%s-%s).nxtheme", themeName, creator, themeTypeSafe, themeId);
+	char *path = NULL;
+
+	if (theme->packId && theme->packName && theme->packCreator){
+		char *packName = SafeFilenameText(theme->packName);
+		char *packCreator = SafeFilenameText(theme->packCreator);
+		char *packId = SafeFilenameText(theme->packId);
+		path = CopyTextArgsUtil("/Themes/ThemezerNX/%s by %s (%s)/%s", packName, packCreator, packId, fileName);
+		free(packName);
+		free(packCreator);
+		free(packId);
+	}
+	else {
+		path = CopyTextArgsUtil("/Themes/ThemezerNX/%s", fileName);
+	}
+
+	free(themeName);
+	free(creator);
+	free(themeTypeSafe);
+	free(themeId);
+	free(fileName);
+	return path;
+}
+
+char *GetTemporaryThemePath(const ThemeInfo_t *theme){
+	char *themeId = SafeFilenameText(theme->id);
+	char *path = CopyTextArgsUtil(TEMPORARY_INSTALL_DIR "/theme-%s.nxtheme", themeId);
+
+	free(themeId);
+	return path;
+}
+
+char *GetSplashPath(const SplashInfo_t *splash){
+	char *splashName = SafeFilenameText(splash->name);
+	char *creator = SafeFilenameText(splash->creator);
+	char *splashId = SafeFilenameText(splash->id);
+	char *path = CopyTextArgsUtil("/Themes/ThemezerNX/Splashes/%s by %s (splash-%s).bmp", splashName, creator, splashId);
+
+	free(splashName);
+	free(creator);
+	free(splashId);
+	return path;
+}
+
+char *GetTemporarySplashPath(const SplashInfo_t *splash){
+	char *splashId = SafeFilenameText(splash->id);
+	char *path = CopyTextArgsUtil(TEMPORARY_INSTALL_DIR "/splash-%s.bmp", splashId);
+
+	free(splashId);
+	return path;
+}
+
+char *GetRemoteInstallPath(const RemoteInstallInfo_t *remoteInstall){
+	char *name = SafeFilenameText(remoteInstall->name);
+	char *creator = SafeFilenameText(remoteInstall->creator);
+	char *quickId = SafeFilenameText(remoteInstall->quickId);
+	char *path;
+
+	if (remoteInstall->kind == RemoteInstallKindSplash){
+		path = CopyTextArgsUtil("/Themes/ThemezerNX/Splashes/%s by %s (remote-splash-%s).bmp", name, creator, quickId);
+	}
+	else {
+		char *target = SafeFilenameText(GetInstallSlotLabel(remoteInstall->target));
+		path = CopyTextArgsUtil("/Themes/ThemezerNX/%s by %s (%s-%s).nxtheme", name, creator, target, quickId);
+		free(target);
+	}
+
+	free(name);
+	free(creator);
+	free(quickId);
+	return path;
+}
+
+char *GetTemporaryRemoteInstallPath(const RemoteInstallInfo_t *remoteInstall){
+	char *quickId = SafeFilenameText(remoteInstall->quickId);
+	char *path = CopyTextArgsUtil(
+		TEMPORARY_INSTALL_DIR "/remote-%s-%s.%s",
+		(remoteInstall->kind == RemoteInstallKindSplash) ? "splash" : "theme",
+		quickId,
+		(remoteInstall->kind == RemoteInstallKindSplash) ? "bmp" : "nxtheme"
+	);
+
+	free(quickId);
+	return path;
+}
+
+void CleanupTemporaryInstalls(void){
+	DIR *dir = opendir(TEMPORARY_INSTALL_DIR);
+	if (!dir)
+		return;
+
+	struct dirent *entry;
+	while ((entry = readdir(dir)) != NULL){
+		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
+			continue;
+
+		char *path = CopyTextArgsUtil(TEMPORARY_INSTALL_DIR "/%s", entry->d_name);
+		unlink(path);
+		free(path);
+	}
+
+	closedir(dir);
 }
 
 char* showKeyboard(char* message, char* initialText, u64 size){
@@ -68,21 +193,44 @@ int isStringNullOrEmpty(const char *in){
 	return 1;
 }
 
-char *SanitizeString(const char *name)
+char *SafeFilenameText(const char *name)
 {
-	const char* forbiddenChars = "/?<>\\:*|\".,";
+	const char* forbiddenChars = "\\~#*{}/:<>?|\",";
+	if (!name)
+		return CopyTextUtil("_");
 
 	char *src = calloc(strlen(name) + 1, 1);
 	const char *c = name;
 	char *src_temp = src;
+	bool lastWasSpace = true;
 	while (*c)
 	{
-		if (!strchr(forbiddenChars, *c) && *c >= 32 && *c <= 126){
-			*src_temp = *c;
+		char out = 0;
+		if (*c == ' ' || (*c >= 9 && *c <= 13)){
+			if (!lastWasSpace)
+				out = ' ';
+			lastWasSpace = true;
+		}
+		else if (strchr(forbiddenChars, *c) || *c < 32 || *c > 126){
+			out = '_';
+			lastWasSpace = false;
+		}
+		else {
+			out = *c;
+			lastWasSpace = false;
+		}
+
+		if (out){
+			*src_temp = out;
 			src_temp++;
 		}
 			
 		c++;
+	}
+
+	while (src_temp > src && *(src_temp - 1) == ' '){
+		src_temp--;
+		*src_temp = '\0';
 	}
 
 	if (!src[0]){
@@ -100,8 +248,8 @@ void AllocateInstalls(int len){
 }
 
 int GetInstallSlotOffset(char *name){
-	for (int i = 0; i < 7; i++){
-		if (!strcmp(targetOptions[i], name))
+	for (int i = 0; i < QueuedInstalls.len; i++){
+		if (!strcmp(GetInstallSlotLabel(i), name))
 			return i;
 	}
 
@@ -109,19 +257,27 @@ int GetInstallSlotOffset(char *name){
 }
 
 int CheckIfInstallSlotIsFree(int pos){
-	if (pos < 0)
+	if (pos < 0 || pos >= QueuedInstalls.len)
 		return 0;
 
 	return (QueuedInstalls.paths[pos] == NULL);
 }
 
 void SetInstallSlot(int pos, char *path){
+	if (pos < 0 || pos >= QueuedInstalls.len)
+		return;
+
 	if (path == NULL){
 		if (QueuedInstalls.paths[pos] != NULL){
 			free(QueuedInstalls.paths[pos]);
 			QueuedInstalls.paths[pos] = NULL;
 		}
 		return;
+	}
+
+	if (QueuedInstalls.paths[pos] != NULL){
+		free(QueuedInstalls.paths[pos]);
+		QueuedInstalls.paths[pos] = NULL;
 	}
 	
 	int len = 0;
@@ -155,6 +311,16 @@ void SetInstallSlot(int pos, char *path){
 	}
 
 	QueuedInstalls.paths[pos] = out;
+}
+
+const char *GetInstallSlotLabel(int pos){
+	if (pos >= 0 && pos < THEME_TARGET_COUNT)
+		return targetOptions[pos + 1];
+
+	if (pos == SPLASH_INSTALL_SLOT)
+		return targetOptions[SPLASH_TARGET_INDEX];
+
+	return "Unknown";
 }
 
 char *GetInstallArgs(const char *path){
