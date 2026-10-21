@@ -677,10 +677,10 @@ int MakeDownloadRequest(char *url, char *path, DownloadProgressContext_t *progre
                 res = apiError;
             }
             else if (responseCode >= 400){
-                char *message = CopyTextArgsUtil("The themezer server returned HTTP status %ld.", responseCode);
-                ShapeLinker_t *menu = CreateBaseMessagePopup("Download Error", message);
+                char *message = CopyTextArgsUtil("themezer 服务器返回 HTTP 状态码 %ld。", responseCode);
+                ShapeLinker_t *menu = CreateBaseMessagePopup("下载错误", message);
                 free(message);
-                ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
+                ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "确定", FONT_TEXT[FSize28], exitFunc), ButtonType);
                 MakeMenu(menu, ButtonHandlerBExit, NULL);
                 ShapeLinkDispose(&menu);
                 res = (int)responseCode;
@@ -711,7 +711,7 @@ int MakeDownloadRequest(char *url, char *path, DownloadProgressContext_t *progre
 
 static void ShowRequestErrorPopup(char *title, char *message){
     ShapeLinker_t *menu = CreateBaseMessagePopup(title, message);
-    ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
+    ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "确定", FONT_TEXT[FSize28], exitFunc), ButtonType);
     MakeMenu(menu, ButtonHandlerBExit, NULL);
     ShapeLinkDispose(&menu);
 }
@@ -724,7 +724,7 @@ static int ShowApiError(cJSON *root){
     cJSON *messageItem = cJSON_GetObjectItemCaseSensitive(root, "message");
 
     if (cJSON_IsNumber(statusCode) && cJSON_IsString(messageItem)){
-        ShowRequestErrorPopup("Error during request", messageItem->valuestring);
+        ShowRequestErrorPopup("请求出错", messageItem->valuestring);
         return statusCode->valueint ? statusCode->valueint : 1;
     }
 
@@ -737,7 +737,7 @@ static int ShowApiError(cJSON *root){
             char *message = cJSON_GetStringValue(messageItem);
             
             if (message)
-                ShowRequestErrorPopup("Error during request", message);
+                ShowRequestErrorPopup("请求出错", message);
         }
 
         return 1;

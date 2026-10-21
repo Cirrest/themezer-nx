@@ -15,11 +15,11 @@
 #include "curl.h"
 
 ShapeLinker_t *WarnMenu(){
-    ShapeLinker_t *warnMenu = CreateBaseMessagePopup("Warning!", "The NXThemes Installer could not be found!\nMake sure it is in the following location:\n\nsd:/switch/NXThemesInstaller.nro");
+    ShapeLinker_t *warnMenu = CreateBaseMessagePopup("警告！", "找不到 NXThemes Installer！\n请确认其位于以下位置：\n\nsd:/switch/NXThemesInstaller.nro");
 
     ShapeLinkAdd(&warnMenu, RectangleCreate(POS(250, 470, 780, 50), COLOR_CURSOR, 1), RectangleType);
     ShapeLinkAdd(&warnMenu, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
-    ShapeLinkAdd(&warnMenu, TextCenteredCreate(POS(250, 470, 780, 50), "Alright", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
+    ShapeLinkAdd(&warnMenu, TextCenteredCreate(POS(250, 470, 780, 50), "好的", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
 
     return warnMenu;
 }

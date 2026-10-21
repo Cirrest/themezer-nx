@@ -103,9 +103,9 @@ static void ShowMainMenuLoadError(int res){
         return;
     }
 
-    char *message = CopyTextArgsUtil("Loading browse data failed. Error Code: %d", res);
-    ShapeLinker_t *menu = CreateBaseMessagePopup("Browse Load Failed", message);
-    ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
+    char *message = CopyTextArgsUtil("加载浏览数据失败。错误代码：%d", res);
+    ShapeLinker_t *menu = CreateBaseMessagePopup("浏览数据加载失败", message);
+    ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "确定", FONT_TEXT[FSize28], exitFunc), ButtonType);
     MakeMenu(menu, ButtonHandlerBExit, NULL);
     ShapeLinkDispose(&menu);
     free(message);
@@ -281,7 +281,7 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     ShapeLinkAdd(&out, TextCenteredCreate(POS(920, 0, 240, 60), temp, COLOR_WHITE, FONT_TEXT[FSize25]), TextCenteredType);
     free(temp);
 
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 60, SCREEN_W, SCREEN_H - 60), listItems ? " " : "Loading...", COLOR_WHITE, FONT_TEXT[FSize45]), TextCenteredType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 60, SCREEN_W, SCREEN_H - 60), listItems ? " " : "加载中...", COLOR_WHITE, FONT_TEXT[FSize45]), TextCenteredType);
     ShapeLinkAdd(&out, ImageCreate(moodDown, POS(0, 0, 0, 0), 0), ImageType);
     ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 460, SCREEN_W, 80), " ", COLOR_WHITE, FONT_TEXT[FSize35]), TextCenteredType);
 

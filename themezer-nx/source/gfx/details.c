@@ -9,9 +9,17 @@ static int ShowSplashDetailsMenu(SplashInfo_t *target, ListItem_t *listItem);
 
 static const char *GetThemeTargetLabel(const ThemeInfo_t *target){
     if (target->target < 0 || target->target >= THEME_TARGET_COUNT)
-        return "Unknown";
+        return "未知";
 
     return targetOptions[target->target + 1];
+}
+
+// ASCII only: used for filenames stored on the SD card
+static const char *GetThemeTargetFilenameLabel(const ThemeInfo_t *target){
+    if (target->target < 0 || target->target >= THEME_TARGET_COUNT)
+        return "Unknown";
+
+    return targetOptionsFilename[target->target + 1];
 }
 
 static ShapeLinker_t *CreateQuickIdLoadingMenu(){
@@ -20,15 +28,15 @@ static ShapeLinker_t *CreateQuickIdLoadingMenu(){
     SDL_Texture *screenshot = ScreenshotToTexture();
     ShapeLinkAdd(&render, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
     ShapeLinkAdd(&render, RectangleCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,200), 1), RectangleType);
-    ShapeLinkAdd(&render, TextCenteredCreate(POS(0, 0, SCREEN_W, SCREEN_H), "Looking up Quick ID...", COLOR_WHITE, FONT_TEXT[FSize45]), TextCenteredType);
-    ShapeLinkAdd(&render, TextCenteredCreate(POS(0, SCREEN_H - 90, SCREEN_W, 40), "Press B to cancel", COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
+    ShapeLinkAdd(&render, TextCenteredCreate(POS(0, 0, SCREEN_W, SCREEN_H), "正在查询 Quick ID...", COLOR_WHITE, FONT_TEXT[FSize45]), TextCenteredType);
+    ShapeLinkAdd(&render, TextCenteredCreate(POS(0, SCREEN_H - 90, SCREEN_W, 40), "按 B 取消", COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
 
     return render;
 }
 
 static int ShowQuickIdMessage(const char *title, const char *message){
     ShapeLinker_t *menu = CreateBaseMessagePopup((char *)title, (char *)message);
-    ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
+    ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "确定", FONT_TEXT[FSize28], exitFunc), ButtonType);
     MakeMenu(menu, ButtonHandlerBExit, NULL);
     ShapeLinkDispose(&menu);
 
@@ -69,7 +77,7 @@ static int ShowThemeDetailsMenu(ThemeInfo_t *target, ListItem_t *listItem){
 }
 
 static const char *GetRemoteInstallTypeLabel(const RemoteInstallInfo_t *target){
-    return (target->kind == RemoteInstallKindSplash) ? "Hekate Splash" : "Switch Theme";
+    return (target->kind == RemoteInstallKindSplash) ? "Hekate 开机画面" : "Switch 主题";
 }
 
 static int ShowDownloadResult(DownloadProgressContext_t *progress, int res){
@@ -78,7 +86,7 @@ static int ShowDownloadResult(DownloadProgressContext_t *progress, int res){
 
     ShapeLinkAdd(&progress->menu, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0, 0, 0, 0), COLOR(0, 0, 0, 0), COLOR(0, 0, 0, 0), COLOR(0, 0, 0, 0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
     free(progress->message->text.text);
-    progress->message->text.text = CopyTextUtil(progress->cancelled ? "Download cancelled!" : "Download failed!");
+    progress->message->text.text = CopyTextUtil(progress->cancelled ? "下载已取消！" : "下载失败！");
     MakeMenu(progress->menu, ButtonHandlerBExit, NULL);
 
     return res;
@@ -86,7 +94,7 @@ static int ShowDownloadResult(DownloadProgressContext_t *progress, int res){
 
 static int DownloadRemoteInstallToPath(RemoteInstallInfo_t *target, char *path){
     DownloadProgressContext_t progress = {0};
-    ShapeLinker_t *render = CreateDownloadProgressMenu((target->kind == RemoteInstallKindSplash) ? "Downloading Splash..." : "Downloading Theme...", &progress);
+    ShapeLinker_t *render = CreateDownloadProgressMenu((target->kind == RemoteInstallKindSplash) ? "正在下载开机画面..." : "正在下载主题...", &progress);
     RenderShapeLinkList(render);
     int res = DownloadThemeFromUrl(CopyTextUtil(target->downloadLink), path, &progress);
     ShowDownloadResult(&progress, res);
@@ -114,14 +122,14 @@ static int InstallRemoteInstallAtPath(RemoteInstallInfo_t *target, char *path){
         int installSlot = (target->kind == RemoteInstallKindSplash) ? SPLASH_INSTALL_SLOT : target->target;
         SetInstallSlot(installSlot, path);
 
-        const char *title = (target->kind == RemoteInstallKindSplash) ? "Splash Queued!" : "Theme Queued!";
+        const char *title = (target->kind == RemoteInstallKindSplash) ? "开机画面已排队！" : "主题已排队！";
         const char *message = (target->kind == RemoteInstallKindSplash) ?
-            "The remote Hekate splash is queued for NXThemes Installer.\nExit the app to apply it.\nYou can exit the app by pressing the + button." :
-            "The remote theme is queued for NXThemes Installer.\nExit the app to apply it.\nYou can exit the app by pressing the + button.";
+            "Hekate 开机画面已加入 NXThemes Installer 安装队列。\n退出应用即可生效。\n可以按 + 键退出应用。" :
+            "主题已加入 NXThemes Installer 安装队列。\n退出应用即可生效。\n可以按 + 键退出应用。";
         ShapeLinker_t *out = CreateBaseMessagePopup((char *)title, (char *)message);
         ShapeLinkAdd(&out, RectangleCreate(POS(250, 470, 780, 50), COLOR_CARDCURSOR, 1), RectangleType);
         ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
-        ShapeLinkAdd(&out, TextCenteredCreate(POS(250, 470, 780, 50), "Got it!", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
+        ShapeLinkAdd(&out, TextCenteredCreate(POS(250, 470, 780, 50), "知道了", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
         MakeMenu(out, ButtonHandlerBExit, NULL);
         ShapeLinkDispose(&out);
     }
@@ -156,17 +164,17 @@ static ShapeLinker_t *CreateRemoteSelectMenu(RequestInfo_t *rI){
     ShapeLinkAdd(&out, ButtonCreate(POS(SCREEN_W - 200, 70, 50, 50), COLOR_TOPBAR, COLOR_RED, COLOR_WHITE, COLOR_TOPBARCURSOR, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(XIcon, POS(SCREEN_W - 200, 70, 50, 50), 0), ImageType);
 
-    ShapeLinkAdd(&out, ButtonCreate(POS(190, 150, 280, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install & Save", FONT_TEXT[FSize30], InstallRemoteInstallButton), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(490, 150, 280, 60), COLOR_INSTALLONLYBTN, COLOR_INSTALLONLYBTNPRS, COLOR_WHITE, COLOR_INSTALLONLYBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Only", FONT_TEXT[FSize30], InstallRemoteInstallOnlyButton), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(790, 150, 280, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "Download Only", FONT_TEXT[FSize30], DownloadRemoteInstallButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(190, 150, 280, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "安装并保存", FONT_TEXT[FSize30], InstallRemoteInstallButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(490, 150, 280, 60), COLOR_INSTALLONLYBTN, COLOR_INSTALLONLYBTNPRS, COLOR_WHITE, COLOR_INSTALLONLYBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "仅安装", FONT_TEXT[FSize30], InstallRemoteInstallOnlyButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(790, 150, 280, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "仅下载", FONT_TEXT[FSize30], DownloadRemoteInstallButton), ButtonType);
 
     char *created = CopyTextUtil(target->lastUpdated);
     char *info = NULL;
     if (target->kind == RemoteInstallKindSplash){
-        info = CopyTextArgsUtil("By %s\n\nCreated: %s\n\nQuick ID: %s\n\nType: %s", target->creator, strtok(created, "T"), target->quickId, GetRemoteInstallTypeLabel(target));
+        info = CopyTextArgsUtil("作者：%s\n\n创建：%s\n\nQuick ID：%s\n\n类型：%s", target->creator, strtok(created, "T"), target->quickId, GetRemoteInstallTypeLabel(target));
     }
     else {
-        info = CopyTextArgsUtil("By %s\n\nCreated: %s\n\nQuick ID: %s\n\nType: %s\n\nMenu: %s", target->creator, strtok(created, "T"), target->quickId, GetRemoteInstallTypeLabel(target), GetInstallSlotLabel(target->target));
+        info = CopyTextArgsUtil("作者：%s\n\n创建：%s\n\nQuick ID：%s\n\n类型：%s\n\n菜单：%s", target->creator, strtok(created, "T"), target->quickId, GetRemoteInstallTypeLabel(target), GetInstallSlotLabel(target->target));
     }
     ShapeLinkAdd(&out, TextCenteredCreate(POS(190, 250, 900, 250), info, COLOR_WHITE, FONT_TEXT[FSize28]), TextBoxType);
     free(info);
@@ -179,7 +187,7 @@ static ShapeLinker_t *CreateRemoteSelectMenu(RequestInfo_t *rI){
 
 static int DownloadSplashToPath(SplashInfo_t *target, char *path){
     DownloadProgressContext_t progress = {0};
-    ShapeLinker_t *render = CreateDownloadProgressMenu("Downloading Splash...", &progress);
+    ShapeLinker_t *render = CreateDownloadProgressMenu("正在下载开机画面...", &progress);
     RenderShapeLinkList(render);
     int res = DownloadThemeFromUrl(CopyTextUtil(target->downloadLink), path, &progress);
     ShowDownloadResult(&progress, res);
@@ -206,10 +214,10 @@ static int InstallSplashAtPath(SplashInfo_t *target, char *path){
     if (!res){
         SetInstallSlot(SPLASH_INSTALL_SLOT, path);
 
-        ShapeLinker_t *out = CreateBaseMessagePopup("Splash Queued!", "The Hekate splash is queued for NXThemes Installer.\nExit the app to apply it.\nYou can exit the app by pressing the + button.");
+        ShapeLinker_t *out = CreateBaseMessagePopup("开机画面已排队！", "Hekate 开机画面已加入 NXThemes Installer 安装队列。\n退出应用即可生效。\n可以按 + 键退出应用。");
         ShapeLinkAdd(&out, RectangleCreate(POS(250, 470, 780, 50), COLOR_CARDCURSOR, 1), RectangleType);
         ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
-        ShapeLinkAdd(&out, TextCenteredCreate(POS(250, 470, 780, 50), "Got it!", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
+        ShapeLinkAdd(&out, TextCenteredCreate(POS(250, 470, 780, 50), "知道了", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
         MakeMenu(out, ButtonHandlerBExit, NULL);
         ShapeLinkDispose(&out);
     }
@@ -245,15 +253,15 @@ static ShapeLinker_t *CreateSplashSelectMenu(RequestInfo_t *rI){
     ShapeLinkAdd(&out, ImageCreate(target->preview, POS(55, 105, 850, 478), 0), ImageType);
     ShapeLinkAdd(&out, ImageCreate(XIcon, POS(SCREEN_W - 100, 50, 50, 50), 0), ImageType);
 
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install & Save", FONT_TEXT[FSize30], InstallSplashButton), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_INSTALLONLYBTN, COLOR_INSTALLONLYBTNPRS, COLOR_WHITE, COLOR_INSTALLONLYBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Only", FONT_TEXT[FSize30], InstallSplashOnlyButton), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 250, SCREEN_W - 980, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "Download Only", FONT_TEXT[FSize30], DownloadSplashButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "安装并保存", FONT_TEXT[FSize30], InstallSplashButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_INSTALLONLYBTN, COLOR_INSTALLONLYBTNPRS, COLOR_WHITE, COLOR_INSTALLONLYBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "仅安装", FONT_TEXT[FSize30], InstallSplashOnlyButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 250, SCREEN_W - 980, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "仅下载", FONT_TEXT[FSize30], DownloadSplashButton), ButtonType);
 
     char *created = CopyTextUtil(target->createdAt);
     char *updated = CopyTextUtil(target->lastUpdated);
     char *createdDate = strtok(created, "T");
     char *updatedDate = strtok(updated, "T");
-    char *info = CopyTextArgsUtil("By %s\n\nCreated: %s\nUpdated: %s\n\nQuick ID: %s\n\nType: Hekate Splash", target->creator, createdDate, updatedDate, target->quickId);
+    char *info = CopyTextArgsUtil("作者：%s\n\n创建：%s\n更新：%s\n\nQuick ID：%s\n\n类型：Hekate 开机画面", target->creator, createdDate, updatedDate, target->quickId);
     ShapeLinkAdd(&out, TextCenteredCreate(POS(920, 320, SCREEN_W - 990, 260), info, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
     free(info);
     free(created);
@@ -321,7 +329,7 @@ int EnlargePreviewImage(Context_t *ctx){
 
 static int DownloadThemeToPath(ThemeInfo_t *target, char *path){
     DownloadProgressContext_t progress = {0};
-    ShapeLinker_t *render = CreateDownloadProgressMenu("Downloading Theme...", &progress);
+    ShapeLinker_t *render = CreateDownloadProgressMenu("正在下载主题...", &progress);
     RenderShapeLinkList(render);
 
     int res = DownloadThemeFromUrl(CopyTextUtil(target->downloadLink), path, &progress);
@@ -334,7 +342,7 @@ static int DownloadThemeToPath(ThemeInfo_t *target, char *path){
 int DownloadThemeButton(Context_t *ctx){
     RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
     ThemeInfo_t *target = rI->themes;
-    char *path = GetThemePath(target, GetThemeTargetLabel(target));
+    char *path = GetThemePath(target, GetThemeTargetFilenameLabel(target));
     int res = DownloadThemeToPath(target, path);
     free(path);
     return res;
@@ -349,10 +357,10 @@ static int InstallThemeAtPath(ThemeInfo_t *target, char *path){
     if (!res){
         SetInstallSlot(target->target, path);
 
-        ShapeLinker_t *out = CreateBaseMessagePopup("Install Queued!", "Install Queued. Exit the app to apply the theme.\nYou can exit the app by pressing the + button.");
+        ShapeLinker_t *out = CreateBaseMessagePopup("已加入安装队列！", "已加入安装队列。退出应用即可应用主题。\n可以按 + 键退出应用。");
         ShapeLinkAdd(&out, RectangleCreate(POS(250, 470, 780, 50), COLOR_CARDCURSOR, 1), RectangleType);
         ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
-        ShapeLinkAdd(&out, TextCenteredCreate(POS(250, 470, 780, 50), "Got it!", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
+        ShapeLinkAdd(&out, TextCenteredCreate(POS(250, 470, 780, 50), "知道了", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
         MakeMenu(out, ButtonHandlerBExit, NULL);
         ShapeLinkDispose(&out);
     }
@@ -363,7 +371,7 @@ static int InstallThemeAtPath(ThemeInfo_t *target, char *path){
 
 int InstallThemeButton(Context_t *ctx){
     RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
-    return InstallThemeAtPath(rI->themes, GetThemePath(rI->themes, GetThemeTargetLabel(rI->themes)));
+    return InstallThemeAtPath(rI->themes, GetThemePath(rI->themes, GetThemeTargetFilenameLabel(rI->themes)));
 }
 
 static int InstallThemeOnlyButton(Context_t *ctx){
@@ -391,15 +399,15 @@ ShapeLinker_t *CreateSelectMenu(RequestInfo_t *rI){
 
     ShapeLinkAdd(&out, ImageCreate(XIcon, POS(SCREEN_W - 100, 50, 50, 50), 0), ImageType);
 
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, (GetInstallButtonState()) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install & Save", FONT_TEXT[FSize30], InstallThemeButton), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_INSTALLONLYBTN, COLOR_INSTALLONLYBTNPRS, COLOR_WHITE, COLOR_INSTALLONLYBTNSEL, (GetInstallButtonState()) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Only", FONT_TEXT[FSize30], InstallThemeOnlyButton), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 250, SCREEN_W - 980, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "Download Only", FONT_TEXT[FSize30], DownloadThemeButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, (GetInstallButtonState()) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "安装并保存", FONT_TEXT[FSize30], InstallThemeButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_INSTALLONLYBTN, COLOR_INSTALLONLYBTNPRS, COLOR_WHITE, COLOR_INSTALLONLYBTNSEL, (GetInstallButtonState()) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "仅安装", FONT_TEXT[FSize30], InstallThemeOnlyButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 250, SCREEN_W - 980, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "仅下载", FONT_TEXT[FSize30], DownloadThemeButton), ButtonType);
 
     char *created = CopyTextUtil(target->createdAt);
     char *updated = CopyTextUtil(target->lastUpdated);
     char *createdDate = strtok(created, "T");
     char *updatedDate = strtok(updated, "T");
-    char *info = CopyTextArgsUtil("By %s\n\nCreated: %s\nUpdated: %s\n\nID: %s\nDownloads: %d\nSaves: %d\n\nMenu: %s", target->creator, createdDate, updatedDate, target->id, target->dlCount, target->likeCount, GetThemeTargetLabel(target));
+    char *info = CopyTextArgsUtil("作者：%s\n\n创建：%s\n更新：%s\n\nID：%s\n下载：%d\n收藏：%d\n\n菜单：%s", target->creator, createdDate, updatedDate, target->id, target->dlCount, target->likeCount, GetThemeTargetLabel(target));
     ShapeLinkAdd(&out, TextCenteredCreate(POS(920, 320, SCREEN_W - 990, 260), info, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
     if (target->description != NULL && target->description[0]) {
         ShapeLinkAdd(&out, TextCenteredCreate(POS(60, 590, SCREEN_W - 120, 82), target->description, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
@@ -437,7 +445,7 @@ int ThemeSelect(Context_t *ctx){
 }
 
 int ShowQuickIdLookup(Context_t *ctx){
-    char *quickId = showKeyboard("Input Quick ID (find this on themezer.net)", NULL, 64);
+    char *quickId = showKeyboard("输入 Quick ID（可在 themezer.net 上找到）", NULL, 64);
     if (quickId == NULL)
         return 0;
 
@@ -485,12 +493,12 @@ int ShowQuickIdLookup(Context_t *ctx){
         }
     }
     else if (res == 1){
-        char *message = CopyTextArgsUtil("No result found for Quick ID: %s", quickId);
-        ShowQuickIdMessage("Quick ID Not Found", message);
+        char *message = CopyTextArgsUtil("未找到 Quick ID 为 %s 的结果", quickId);
+        ShowQuickIdMessage("未找到 Quick ID", message);
         free(message);
     }
     else if (res < 0 && res != -4){
-        ShowQuickIdMessage("Quick ID Lookup Failed", "The quick ID lookup could not be completed.");
+        ShowQuickIdMessage("Quick ID 查询失败", "无法完成 Quick ID 查询。");
     }
 
     FreeRequestContent(&lookupRI);

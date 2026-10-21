@@ -4,7 +4,7 @@
 #include <curl/curl.h>
 #include "libs/cJSON.h"
 
-extern const char *targetOptions[], *sortOptions[], *orderOptions[];
+extern const char *targetOptions[], *targetOptionsFilename[], *sortOptions[], *orderOptions[];
 
 #define SORT_OPTION_COUNT 5
 #define TRENDING_SORT_INDEX 0

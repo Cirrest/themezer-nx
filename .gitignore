@@ -367,3 +367,7 @@ themezer-nx/assets/
 .idea/
 
 .DS_Store
+
+# 汉化仓库本地补充（不纳入版本控制）
+tools/scratch/
+themezer-nx/*.map

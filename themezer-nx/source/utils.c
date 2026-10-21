@@ -104,6 +104,8 @@ char *GetTemporarySplashPath(const SplashInfo_t *splash){
 	return path;
 }
 
+static const char *GetInstallSlotFilenameLabel(int pos);
+
 char *GetRemoteInstallPath(const RemoteInstallInfo_t *remoteInstall){
 	char *name = SafeFilenameText(remoteInstall->name);
 	char *creator = SafeFilenameText(remoteInstall->creator);
@@ -114,7 +116,7 @@ char *GetRemoteInstallPath(const RemoteInstallInfo_t *remoteInstall){
 		path = CopyTextArgsUtil("/Themes/ThemezerNX/Splashes/%s by %s (remote-splash-%s).bmp", name, creator, quickId);
 	}
 	else {
-		char *target = SafeFilenameText(GetInstallSlotLabel(remoteInstall->target));
+		char *target = SafeFilenameText(GetInstallSlotFilenameLabel(remoteInstall->target));
 		path = CopyTextArgsUtil("/Themes/ThemezerNX/%s by %s (%s-%s).nxtheme", name, creator, target, quickId);
 		free(target);
 	}
@@ -313,6 +315,17 @@ void SetInstallSlot(int pos, char *path){
 	QueuedInstalls.paths[pos] = out;
 }
 
+// ASCII only: used for filenames stored on the SD card
+static const char *GetInstallSlotFilenameLabel(int pos){
+	if (pos >= 0 && pos < THEME_TARGET_COUNT)
+		return targetOptionsFilename[pos + 1];
+
+	if (pos == SPLASH_INSTALL_SLOT)
+		return targetOptionsFilename[SPLASH_TARGET_INDEX];
+
+	return "Unknown";
+}
+
 const char *GetInstallSlotLabel(int pos){
 	if (pos >= 0 && pos < THEME_TARGET_COUNT)
 		return targetOptions[pos + 1];
@@ -320,7 +333,7 @@ const char *GetInstallSlotLabel(int pos){
 	if (pos == SPLASH_INSTALL_SLOT)
 		return targetOptions[SPLASH_TARGET_INDEX];
 
-	return "Unknown";
+	return "未知";
 }
 
 char *GetInstallArgs(const char *path){

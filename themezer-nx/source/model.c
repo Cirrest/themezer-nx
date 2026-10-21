@@ -1,6 +1,20 @@
 #include "model.h"
 
 const char *targetOptions[] = {
+    "主题包",
+    "主界面",
+    "锁屏",
+    "全部应用",
+    "设置",
+    "玩家选择",
+    "用户页面",
+    "新闻",
+    "全部",
+    "开机画面"
+};
+
+// ASCII only: used for filenames stored on the SD card
+const char *targetOptionsFilename[] = {
     "Packs",
     "Home Menu",
     "Lock Screen",
@@ -14,14 +28,14 @@ const char *targetOptions[] = {
 };
 
 const char *sortOptions[] = {
-    "Trending",
-    "Created",
-    "Updated",
-    "Downloads",
-    "Saves"
+    "热门",
+    "创建时间",
+    "更新时间",
+    "下载量",
+    "收藏量"
 };
 
 const char *orderOptions[] = {
-    "Descending",
-    "Ascending"
+    "降序",
+    "升序"
 };
